@@ -1,0 +1,39 @@
+# Default configuration for Ternary Transformer Compiler
+
+model:
+  name: "distilgpt2" # Default small model for testing
+  torch_dtype: "float16"
+  device: "cuda" # or "cpu"
+
+calibration:
+  dataset: "c4"
+  num_samples: 100
+  batch_size: 8
+  max_length: 256
+
+profiling:
+  num_batches: 10
+  sensitivity_threshold: 0.3
+
+quantization:
+  # Mixed-precision strategy
+  ternary_layers: ["v_proj", "mlp", "fc", "ffn"]
+  int8_layers: ["q_proj", "k_proj"]
+  fp16_layers: ["embed", "lm_head", "out_proj"]
+
+smoothquant:
+  alpha: 0.5
+  num_batches: 10
+
+verification:
+  target_accuracy_loss: 0.005
+  confidence: 0.9999
+
+lora_fallback:
+  enabled: true
+  r: 8
+  lora_alpha: 16
+  target_modules: ["q_proj", "v_proj"]
+  lora_dropout: 0.1
+  epochs: 3
+  learning_rate: 0.0001

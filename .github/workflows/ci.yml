@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * 0" # Weekly
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install linting tools
+        run: pip install black flake8
+      - name: Check formatting
+        run: black --check src/ examples/ tests/
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch transformers datasets accelerate peft tqdm scipy numpy
+      - name: Run tests
+        run: |
+          python tests/test_quantizer.py
+          python tests/test_profiler.py
+          python tests/test_compiler.py
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          pip install torch transformers datasets accelerate peft tqdm scipy numpy
+      - name: Run benchmark
+        run: |
+          python examples/benchmark.py --model distilgpt2 --samples 5 --runs 3
+
+  build-wheels:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install build tools
+        run: pip install build wheel
+      - name: Build wheel
+        run: python -m build --wheel
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: ternary-compiler-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist/*.whl
