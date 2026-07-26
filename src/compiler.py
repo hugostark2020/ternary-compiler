@@ -176,8 +176,16 @@ class TernaryCompiler:
             )
 
         dataset = dataset.map(tokenize, batched=True)
-        dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
-        return torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True)
+
+        # Custom collate to avoid torchvision import bug in Colab
+        def collate_fn(batch):
+            input_ids = torch.stack([b["input_ids"] for b in batch])
+            attention_mask = torch.stack([b["attention_mask"] for b in batch])
+            return {"input_ids": input_ids, "attention_mask": attention_mask}
+
+        return torch.utils.data.DataLoader(
+            dataset, batch_size=8, shuffle=True, collate_fn=collate_fn
+        )
 
     def _synthetic_dataset(self):
         """Generate a dummy calibration dataset when no real data is available."""
